@@ -5,7 +5,8 @@
   const state = {
     selectedProjects: new Set(),
     selectedCategories: new Set(),
-    selectedTechnologies: new Set()
+    selectedTechnologies: new Set(),
+    showSidebar: false // for mobile filter toggle
   };
   // Toggle showing the About content in the main area
   state.showAbout = false;
@@ -55,9 +56,6 @@
     renderSubheader(links);
     renderSidebar(siteData);
     renderMain(siteData);
-
-    document.getElementById('year').textContent = new Date().getFullYear();
-    document.getElementById('owner').textContent = owner;
   }
 
   // Header
@@ -98,6 +96,19 @@
   function renderSidebar(data) {
     const sidebar = document.getElementById('site-sidebar');
     sidebar.innerHTML = '';
+
+    // Responsive: show/hide sidebar on small screens
+    const isMobile = window.innerWidth < 825;
+    if (isMobile) {
+      const toggleBtn = el('a', { href: '#', class: 'sidebar-toggle' }, state.showSidebar ? 'Hide Filters' : 'Show Filters');
+      toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        state.showSidebar = !state.showSidebar;
+        renderSidebar(data);
+      });
+      sidebar.appendChild(toggleBtn);
+      if (!state.showSidebar) return;
+    }
 
     // Projects list (toggle-on/off)
     const projSection = el('section', { class: 'side-section' });

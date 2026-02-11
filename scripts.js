@@ -244,16 +244,16 @@
     
     p.description.forEach(d => card.appendChild(el('p', { class: 'project-description' }, d)));
   
-    const meta = el('div', { class: 'project-meta' });
-    meta.appendChild(el('div', { class: 'meta-group' }, el('strong', {}, 'Technologies: '), el('span', {}, p.technologies.join(', '))));
-    meta.appendChild(el('div', { class: 'meta-group' }, el('strong', {}, 'Categories: '), el('span', {}, p.categories.join(', '))));
-    card.appendChild(meta);
-
     if (p.lessons && p.lessons.length) {
       const lessons = el('ul', { class: 'lessons' });
       p.lessons.forEach(l => lessons.appendChild(el('li', {}, l)));
       card.appendChild(el('div', { class: 'lessons-wrap' }, el('strong', {}, 'Lessons:'), lessons));
     }
+
+    const meta = el('div', { class: 'project-meta' });
+    meta.appendChild(el('div', { class: 'meta-group' }, el('strong', {}, 'Technologies: '), el('span', {}, p.technologies.join(', '))));
+    meta.appendChild(el('div', { class: 'meta-group' }, el('strong', {}, 'Categories: '), el('span', {}, p.categories.join(', '))));
+    card.appendChild(meta);
 
     return card;
   }

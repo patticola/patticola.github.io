@@ -2,7 +2,8 @@
 :root {
   --bg: #f8f8f8;
   --text: #1f1f1f;
-  --accent: #7c3aed;
+  --accent: #23478b;
+  --accent-alt: #79f7fc;
   --max-width: 1000px;
 }
 
@@ -23,12 +24,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
   letter-spacing: -0.01rem;
-  filter: sepia(.5)
 }
 
 .site-grid {
   display: grid;
-  grid-template-columns: 20% 1fr;
+  grid-template-columns: 25% 1fr;
   grid-template-rows: auto auto 1fr auto;
   max-width: var(--max-width);
   margin: 0;
@@ -44,7 +44,8 @@ body {
 
 .site-subheader {
   grid-column: 1 / -1;
-  margin-bottom: 0.5rem;
+  margin-top: -15px;
+  font-size: 0.9rem;
 }
 
 .site-sidebar {
@@ -77,6 +78,20 @@ body {
     -3px  3px 0 var(--accent),
      3px  3px 0 var(--accent); /* Four shadows create the outline effect */
   letter-spacing: 4px;
+  cursor: pointer;
+}
+
+/* Additional outline applied when About overlay is active */
+.site-title.about-active {
+  text-shadow:
+    -3px -3px 0 var(--accent),
+     3px -3px 0 var(--accent),
+    -3px  3px 0 var(--accent),
+     3px  3px 0 var(--accent),
+    -5px -5px 0 var(--accent-alt),
+     5px -5px 0 var(--accent-alt),
+    -5px  5px 0 var(--accent-alt),
+     5px  5px 0 var(--accent-alt)
 }
 
 /* Subheader / Navigation */
@@ -160,6 +175,18 @@ body {
 }
 
 /* Main content */
+.about-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.about-overlay p:first-child {
+  margin-top: 0;
+}
+
 .projects-grid {
   display: flex;
   flex-direction: column;

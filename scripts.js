@@ -7,6 +7,8 @@
     selectedCategories: new Set(),
     selectedTechnologies: new Set()
   };
+  // Toggle showing the About content in the main area
+  state.showAbout = false;
 
   // Utility: create an element with attrs and children
   function el(tag, attrs = {}, ...children) {
@@ -22,6 +24,19 @@
       else if (c instanceof Node) node.appendChild(c);
     });
     return node;
+  }
+
+  // Helper: parse start year from project.date (first 4 chars)
+  function getStartYear(p) {
+    if (!p || !p.date) return 0;
+    const raw = String(p.date).slice(0, 4);
+    const y = parseInt(raw, 10);
+    return Number.isFinite(y) ? y : 0;
+  }
+
+  // Helper: return projects sorted by start year desc
+  function getSortedProjects(list) {
+    return (list || siteData.projects || []).slice().sort((a, b) => getStartYear(b) - getStartYear(a));
   }
 
   // Initialization
@@ -51,6 +66,12 @@
     const header = document.getElementById('site-header');
     header.innerHTML = '';
     const title = el('div', { class: 'site-title' }, owner);
+    // Toggle about overlay when header is clicked
+    title.addEventListener('click', () => {
+      toggleAbout();
+    });
+    // reflect current about state visually
+    title.classList.toggle('about-active', state.showAbout);
     header.appendChild(title);
   }
 
@@ -58,11 +79,19 @@
   function renderSubheader(links = []) {
     const sub = document.getElementById('site-subheader');
     sub.innerHTML = '';
+    // Render About link and phonetic/email inline on a single line
     const nav = el('nav', { class: 'subnav' });
-    links.forEach(link => {
-      const a = el('a', { href: link.href }, link.label);
-      nav.appendChild(a);
-    });
+
+    // Phonetic and email as plain text, inline and smaller
+    if (siteData.phonetic) {
+      const ph = el('span', { class: 'sub-phonetic' }, siteData.phonetic);
+      nav.appendChild(ph);
+    }
+    if (siteData.email) {
+      const em = el('span', { class: 'sub-email' }, siteData.email);
+      nav.appendChild(em);
+    }
+
     sub.appendChild(nav);
   }
 
@@ -75,7 +104,7 @@
     const projSection = el('section', { class: 'side-section' });
     projSection.appendChild(el('h3', {}, 'Projects'));
     const projList = el('ul', { class: 'side-list projects' });
-    data.projects.forEach(p => {
+    getSortedProjects(data.projects).forEach(p => {
       const li = el('li', {});
       const link = el('a', { href: '#', class: 'side-button', 'data-project': p.id }, p.title);
       link.addEventListener('click', (e) => {
@@ -141,7 +170,10 @@
     const main = document.getElementById('site-main');
     main.innerHTML = '';
 
-    const filtered = data.projects.filter(p => {
+    // Ensure main can contain positioned overlay
+    main.style.position = main.style.position || 'relative';
+
+    const filtered = getSortedProjects(data.projects).filter(p => {
       // project toggled on
       if (!state.selectedProjects.has(p.id)) return false;
       // categories: if any selected categories then project must include one
@@ -165,6 +197,23 @@
     const grid = el('div', { class: 'projects-grid' });
     filtered.forEach(p => grid.appendChild(renderProjectCard(p)));
     main.appendChild(grid);
+
+    // If About is toggled on, add an overlay on top of the main content
+    if (state.showAbout) {
+      const abouts = siteData.abouts || [];
+      const overlay = el('div', { class: 'about-overlay'});
+      const wrap = el('div', { class: 'about-wrap' });
+      if (abouts.length === 0) {
+        wrap.appendChild(el('div', { class: 'about-item' }, el('p', {}, 'No about content available.')));
+      } else {
+        abouts.forEach((txt, idx) => {
+          const item = el('div', { class: 'about-item' }, el('p', {}, txt));
+          wrap.appendChild(item);
+        });
+      }
+      overlay.appendChild(wrap);
+      main.appendChild(overlay);
+    }
   }
 
   function renderProjectCard(p) {
@@ -192,9 +241,9 @@
       }
       card.appendChild(headerLine);
     }
-
-    card.appendChild(el('p', { class: 'project-desc' }, p.description));
-
+    
+    p.description.forEach(d => card.appendChild(el('p', { class: 'project-description' }, d)));
+  
     const meta = el('div', { class: 'project-meta' });
     meta.appendChild(el('div', { class: 'meta-group' }, el('strong', {}, 'Technologies: '), el('span', {}, p.technologies.join(', '))));
     meta.appendChild(el('div', { class: 'meta-group' }, el('strong', {}, 'Categories: '), el('span', {}, p.categories.join(', '))));
@@ -240,39 +289,41 @@
   }
 
   // Toggle helpers with cascading logic
+  function toggleAbout() {
+    state.showAbout = !state.showAbout;
+    refreshSidebarUI();
+    renderSubheader(siteData.links);
+    // Update header visual state (title may be re-rendered)
+    const titleEl = document.querySelector('.site-title');
+    if (titleEl) titleEl.classList.toggle('about-active', state.showAbout);
+    renderMain(siteData);
+  }
   function toggleProject(id) {
     const allSelected = state.selectedProjects.size === siteData.projects.length &&
                         state.selectedCategories.size === 0 &&
                         state.selectedTechnologies.size === 0;
-    if (allSelected) {
-      // First click: deselect all, select only this one
-      state.selectedProjects.clear();
+    // If currently all selected or multiple selected, select only this project.
+    // If this project is already the sole selection, reset to all.
+    if (state.selectedProjects.size === 1 && state.selectedProjects.has(id) && !state.selectedCategories.size && !state.selectedTechnologies.size) {
+      // This case shouldn't generally occur because single project selection sets cats/techs,
+      // but keep symmetry: reset to all
+      state.selectedProjects = new Set(siteData.projects.map(p => p.id));
       state.selectedCategories.clear();
       state.selectedTechnologies.clear();
-      state.selectedProjects.add(id);
-      // Add its categories and technologies
+    } else if (state.selectedProjects.size === 1 && state.selectedProjects.has(id)) {
+      // If this project is already the only selected project (with cats/techs), clicking again resets to all
+      state.selectedProjects = new Set(siteData.projects.map(p => p.id));
+      state.selectedCategories.clear();
+      state.selectedTechnologies.clear();
+    } else {
+      // Select only this project and its related categories/technologies
+      state.selectedProjects = new Set([id]);
+      state.selectedCategories = new Set();
+      state.selectedTechnologies = new Set();
       const proj = siteData.projects.find(p => p.id === id);
       if (proj) {
         proj.categories.forEach(c => state.selectedCategories.add(c));
         proj.technologies.forEach(t => state.selectedTechnologies.add(t));
-      }
-    } else {
-      // Normal toggle
-      if (state.selectedProjects.has(id)) {
-        state.selectedProjects.delete(id);
-        // Remove categories/techs that no other selected project has
-        const remaining = getCategoriesFromProjects(state.selectedProjects);
-        state.selectedCategories = new Set([...state.selectedCategories].filter(c => remaining.has(c)));
-        const remainingTechs = getTechnologiesFromProjects(state.selectedProjects);
-        state.selectedTechnologies = new Set([...state.selectedTechnologies].filter(t => remainingTechs.has(t)));
-      } else {
-        state.selectedProjects.add(id);
-        // Add its categories and technologies
-        const proj = siteData.projects.find(p => p.id === id);
-        if (proj) {
-          proj.categories.forEach(c => state.selectedCategories.add(c));
-          proj.technologies.forEach(t => state.selectedTechnologies.add(t));
-        }
       }
     }
     refreshSidebarUI();
@@ -280,82 +331,40 @@
   }
 
   function toggleCategory(cat) {
-    const allSelected = state.selectedProjects.size === siteData.projects.length &&
-                        state.selectedCategories.size === 0 &&
-                        state.selectedTechnologies.size === 0;
-    if (allSelected) {
-      // First click: deselect all, select only projects with this category
-      const projsWithCat = getProjectsByCategory(cat);
-      state.selectedProjects.clear();
+    // If this category is already the sole selected category, reset to all
+    if (state.selectedCategories.size === 1 && state.selectedCategories.has(cat)) {
+      state.selectedProjects = new Set(siteData.projects.map(p => p.id));
       state.selectedCategories.clear();
       state.selectedTechnologies.clear();
-      state.selectedCategories.add(cat);
-      // Add all projects and techs that have this category
-      projsWithCat.forEach(id => state.selectedProjects.add(id));
-      const techs = getTechnologiesFromProjects(projsWithCat);
-      techs.forEach(t => state.selectedTechnologies.add(t));
     } else {
-      // Normal toggle
-      if (state.selectedCategories.has(cat)) {
-        state.selectedCategories.delete(cat);
-        // Remove projects and techs that only belonged to this category
-        const projsWithCat = getProjectsByCategory(cat);
-        const remaining = getCategoriesFromProjects(state.selectedProjects);
-        state.selectedProjects = new Set([...state.selectedProjects].filter(id => {
-          const proj = siteData.projects.find(p => p.id === id);
-          return proj && proj.categories.some(c => remaining.has(c));
-        }));
-        const remainingTechs = getTechnologiesFromProjects(state.selectedProjects);
-        state.selectedTechnologies = new Set([...state.selectedTechnologies].filter(t => remainingTechs.has(t)));
-      } else {
-        state.selectedCategories.add(cat);
-        // Add all projects and techs with this category
-        const projsWithCat = getProjectsByCategory(cat);
-        projsWithCat.forEach(id => state.selectedProjects.add(id));
-        const techs = getTechnologiesFromProjects(state.selectedProjects);
-        techs.forEach(t => state.selectedTechnologies.add(t));
-      }
+      // Select only this category and its related projects and technologies
+      const projsWithCat = getProjectsByCategory(cat);
+      state.selectedProjects = new Set();
+      projsWithCat.forEach(id => state.selectedProjects.add(id));
+      state.selectedCategories = new Set([cat]);
+      const techs = getTechnologiesFromProjects(projsWithCat);
+      state.selectedTechnologies = new Set();
+      techs.forEach(t => state.selectedTechnologies.add(t));
     }
     refreshSidebarUI();
     renderMain(siteData);
   }
 
   function toggleTechnology(tech) {
-    const allSelected = state.selectedProjects.size === siteData.projects.length &&
-                        state.selectedCategories.size === 0 &&
-                        state.selectedTechnologies.size === 0;
-    if (allSelected) {
-      // First click: deselect all, select only projects with this tech
-      const projsWithTech = getProjectsByTechnology(tech);
-      state.selectedProjects.clear();
+    // If this technology is already the sole selected technology, reset to all
+    if (state.selectedTechnologies.size === 1 && state.selectedTechnologies.has(tech)) {
+      state.selectedProjects = new Set(siteData.projects.map(p => p.id));
       state.selectedCategories.clear();
       state.selectedTechnologies.clear();
-      state.selectedTechnologies.add(tech);
-      // Add all projects and categories that have this tech
-      projsWithTech.forEach(id => state.selectedProjects.add(id));
-      const cats = getCategoriesFromProjects(projsWithTech);
-      cats.forEach(c => state.selectedCategories.add(c));
     } else {
-      // Normal toggle
-      if (state.selectedTechnologies.has(tech)) {
-        state.selectedTechnologies.delete(tech);
-        // Remove projects and categories that only belonged to this tech
-        const projsWithTech = getProjectsByTechnology(tech);
-        const remaining = getCategoriesFromProjects(state.selectedProjects);
-        state.selectedProjects = new Set([...state.selectedProjects].filter(id => {
-          const proj = siteData.projects.find(p => p.id === id);
-          return proj && proj.technologies.some(t => state.selectedTechnologies.has(t));
-        }));
-        const cats = getCategoriesFromProjects(state.selectedProjects);
-        state.selectedCategories = new Set([...state.selectedCategories].filter(c => cats.has(c)));
-      } else {
-        state.selectedTechnologies.add(tech);
-        // Add all projects and categories with this tech
-        const projsWithTech = getProjectsByTechnology(tech);
-        projsWithTech.forEach(id => state.selectedProjects.add(id));
-        const cats = getCategoriesFromProjects(state.selectedProjects);
-        cats.forEach(c => state.selectedCategories.add(c));
-      }
+      // Select only projects with this tech and their categories
+      const projsWithTech = getProjectsByTechnology(tech);
+      state.selectedProjects = new Set();
+      projsWithTech.forEach(id => state.selectedProjects.add(id));
+      state.selectedTechnologies = new Set([tech]);
+      const cats = getCategoriesFromProjects(projsWithTech);
+      state.selectedCategories = new Set();
+      cats.forEach(c => state.selectedCategories.add(c));
     }
     refreshSidebarUI();
     renderMain(siteData);

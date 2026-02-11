@@ -2,8 +2,8 @@
 :root {
   --bg: #f8f8f8;
   --text: #1f1f1f;
-  --accent: #23478b;
-  --accent-alt: #79f7fc;
+  --accent: #5c0947;
+  --accent-alt: #aa3c8f;
   --max-width: 1000px;
 }
 
@@ -33,7 +33,7 @@ body {
   max-width: var(--max-width);
   margin: 0;
   gap: 10px;
-  padding: 1.5rem;
+  padding: 0 1.5rem;
 }
 
 /* Layout areas */
@@ -284,11 +284,11 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 900px) {
+@media (max-width: 825px) {
   .site-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto 1fr auto;
-    padding: 1rem;
+    padding: 0 1rem;
     gap: 5px;
   }
 

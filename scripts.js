@@ -55,7 +55,6 @@
     renderSubheader(links);
     renderSidebar(siteData);
     renderMain(siteData);
-    renderFooter(owner);
 
     document.getElementById('year').textContent = new Date().getFullYear();
     document.getElementById('owner').textContent = owner;
@@ -395,10 +394,6 @@
       const v = link.getAttribute('data-tech');
       link.classList.toggle('active', state.selectedTechnologies.has(v));
     });
-  }
-
-  function renderFooter(owner) {
-    // Footer content already present via year and owner placeholders
   }
 
   document.addEventListener('DOMContentLoaded', init);
